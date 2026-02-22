@@ -17,6 +17,8 @@ logging.basicConfig(level=logging.INFO)
 class UpdateApp:
     def __init__(self):
         self.app = QApplication(sys.argv)
+        self.app.setApplicationName("SUSE Updater")
+        self.app.setDesktopFileName("io.github.madroots.suse-updater")
         
         # We don't want the app to close if the main window is closed (keeps tray running)
         self.app.setQuitOnLastWindowClosed(False)

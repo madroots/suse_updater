@@ -46,22 +46,26 @@ jobs:
         cp io.github.madroots.suse-updater.metainfo.xml AppDir/usr/share/metainfo/
         
         # Icon
-        cp -f assets/icons/tray_green.svg AppDir/suse-updater.svg
-        ln -sf suse-updater.svg AppDir/.DirIcon
+        cp -f assets/icons/tray_green.svg AppDir/io.github.madroots.suse-updater.svg
+        ln -sf io.github.madroots.suse-updater.svg AppDir/.DirIcon
         
         # Desktop Reference
-        cat > AppDir/suse-updater.desktop <<EOF
+        cat > AppDir/io.github.madroots.suse-updater.desktop <<EOF
         [Desktop Entry]
         Type=Application
         Name=SUSE Updater
         Exec=suse-updater
-        Icon=suse-updater
-        Categories=System;Settings;
+        Icon=io.github.madroots.suse-updater
+        Categories=Qt;Utility;Gui;System;Settings;
         Comment=Safe and simple updates for OpenSUSE Tumbleweed
         Terminal=false
+        StartupWMClass=io.github.madroots.suse-updater
         X-AppImage-Name=SUSE Updater
         X-AppImage-Identifier=io.github.madroots.suse-updater
         EOF
+        
+        # Link for compat
+        ln -sf io.github.madroots.suse-updater.desktop AppDir/suse-updater.desktop
         
         # AppRun script
         find AppDir -name AppRun -delete
