@@ -48,7 +48,8 @@ class WizardWindow(QWidget):
         # Description
         self.desc_label = QLabel(get_text("wizard_desc"))
         self.desc_label.setAlignment(Qt.AlignCenter)
-        self.desc_label.setStyleSheet("font-size: 14px; color: #d4d4d4;")
+        self.desc_label.setWordWrap(True)
+        self.desc_label.setStyleSheet("font-size: 14px; color: #d4d4d4; padding: 0 20px;")
         self.layout.addWidget(self.desc_label)
         
         # Buttons
@@ -112,8 +113,6 @@ class WizardWindow(QWidget):
         self.close()
         
     def on_install(self):
-        script_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "install_sudoers.sh")
-        
         try:
             # Change button text to show progress
             self.install_btn.setText("Installing...")
@@ -121,25 +120,26 @@ class WizardWindow(QWidget):
             self.skip_btn.setEnabled(False)
             QApplication.processEvents()
             
-            # Run the bash script via pkexec so it has root to write to /etc/sudoers.d/
-            subprocess.run(["pkexec", "bash", script_path], check=True)
+            # Inline the command to avoid path issues inside AppDir/pkexec scope
+            cmd = 'echo "ALL ALL=(root) NOPASSWD: /usr/bin/zypper --non-interactive dup --dry-run" > /etc/sudoers.d/suse-updater && chmod 440 /etc/sudoers.d/suse-updater'
+            subprocess.run(["pkexec", "bash", "-c", cmd], check=True)
             
             # Test if the rule actually works!
             self.install_btn.setText("Testing Rule...")
             QApplication.processEvents()
             
             # If the rule works, this command should succeed WITHOUT asking for a password.
-            # -n tells sudo to fail immediately if a password is required, rather than waiting.
+            # -n tells sudo to fail immediately if a password is required.
             test_cmd = ["sudo", "-n", "zypper", "--non-interactive", "dup", "--dry-run"]
             test_proc = subprocess.run(test_cmd, capture_output=True, text=True)
             
             if test_proc.returncode != 0:
-                raise Exception(f"Rule installed, but test failed (Code {test_proc.returncode}).\n{test_proc.stderr}")
+                raise Exception(f"Rule installed, but test failed.\n{test_proc.stderr}")
 
             self.setup_complete.emit()
             self.close()
             
-        except subprocess.CalledProcessError as e:
+        except subprocess.CalledProcessError:
             self._show_error("Failed to install the rule via pkexec.")
             self._reset_buttons()
         except Exception as e:
