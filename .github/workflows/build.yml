@@ -24,7 +24,7 @@ jobs:
         
     - name: Prepare AppDir (Niess Python Base)
       run: |
-        wget https://github.com/niess/python-appimage/releases/download/python3.9/python3.9.27-cp39-cp39-manylinux2014_x86_64.AppImage -O python.AppImage
+        wget https://github.com/niess/python-appimage/releases/download/python3.9/python3.9.25-cp39-cp39-manylinux2014_x86_64.AppImage -O python.AppImage
         chmod +x python.AppImage
         ./python.AppImage --appimage-extract
         mv squashfs-root AppDir
