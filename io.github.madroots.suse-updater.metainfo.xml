@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.madroots.suse-updater</id>
+  <name>SUSE Updater</name>
+  <summary>Safe and simple updates for OpenSUSE Tumbleweed</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>
+      A modern PySide6 GUI for managing OpenSUSE Tumbleweed updates, 
+      with intelligent conflict detection for vendor changes.
+    </p>
+  </description>
+  <launchable type="desktop-id">suse-updater.desktop</launchable>
+</component>

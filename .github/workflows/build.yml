@@ -40,8 +40,10 @@ jobs:
     - name: Configure AppDir
       run: |
         mkdir -p AppDir/usr/bin
+        mkdir -p AppDir/usr/share/metainfo
         # Copy source files
         cp -r main.py i18n.py update_checker.py updater_runner.py ui assets install_sudoers.sh AppDir/
+        cp io.github.madroots.suse-updater.metainfo.xml AppDir/usr/share/metainfo/
         
         # Icon
         cp -f assets/icons/tray_green.svg AppDir/suse-updater.svg
@@ -57,6 +59,8 @@ jobs:
         Categories=System;Settings;
         Comment=Safe and simple updates for OpenSUSE Tumbleweed
         Terminal=false
+        X-AppImage-Name=SUSE Updater
+        X-AppImage-Identifier=io.github.madroots.suse-updater
         EOF
         
         # AppRun script
