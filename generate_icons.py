@@ -60,4 +60,15 @@ if __name__ == "__main__":
     create_svg_icon("yellow", os.path.join(assets_dir, "tray_yellow.svg"), "↑")
     create_svg_icon("red", os.path.join(assets_dir, "tray_red.svg"), "!")
     
+    # Gear icon for settings
+    gear_svg = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <path d="M60.5,36.5v-9l-6.8-1.2c-0.5-2.1-1.3-4.1-2.5-5.9l4.1-5.6l-6.4-6.4l-5.6,4.1c-1.8-1.2-3.8-2-5.9-2.5L36.5,3.5h-9l-1.2,6.8
+	c-2.1,0.5-4.1,1.3-5.9,2.5l-5.6-4.1l-6.4,6.4l4.1,5.6c-1.2,1.8-2,3.8-2.5,5.9l-6.8,1.2v9l6.8,1.2c0.5,2.1,1.3,4.1,2.5,5.9l-4.1,5.6
+	l6.4,6.4l5.6-4.1c1.8,1.2,3.8,2,5.9,2.5l1.2,6.8h9l1.2-6.8c2.1-0.5,4.1-1.3,5.9-2.5l5.6,4.1l6.4-6.4l-4.1-5.6c1.2-1.8,2-3.8,2.5-5.9
+	L60.5,36.5z M32,44c-6.6,0-12-5.4-12-12s5.4-12,12-12s12,5.4,12,12S38.6,44,32,44z" fill="#ccc"/>
+</svg>"""
+    with open(os.path.join(assets_dir, "settings_gear.svg"), "w") as f:
+        f.write(gear_svg)
+    
     print("Icons generated successfully in", assets_dir)

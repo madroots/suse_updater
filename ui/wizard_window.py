@@ -1,7 +1,8 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout, QMessageBox, QApplication
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout, QMessageBox, QApplication, QComboBox
+from PySide6.QtCore import Qt, Signal, QSettings
 import subprocess
 import os
+from i18n import get_text
 
 class WizardWindow(QWidget):
     setup_complete = Signal()
@@ -9,12 +10,28 @@ class WizardWindow(QWidget):
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("System Updater - Initial Setup")
-        self.setFixedSize(550, 400)
+        self.setWindowTitle(get_text("wizard_title"))
+        self.setFixedSize(550, 450)
+        
+        self.settings = QSettings("SuseUpdater", "OpenSUSE_Tool")
         
         self.layout = QVBoxLayout(self)
         self.layout.setAlignment(Qt.AlignCenter)
-        self.layout.setSpacing(20)
+        self.layout.setSpacing(15)
+        
+        # Language Selection
+        self.lang_layout = QHBoxLayout()
+        self.lang_layout.addStretch()
+        self.lang_label = QLabel("Language / Jazyk:")
+        self.lang_label.setStyleSheet("color: #aaa; font-size: 12px;")
+        self.lang_combo = QComboBox()
+        self.lang_combo.addItems(["English", "Slovenčina"])
+        current_lang = self.settings.value("language", "en")
+        self.lang_combo.setCurrentIndex(1 if current_lang == "sk" else 0)
+        self.lang_combo.currentIndexChanged.connect(self._on_lang_changed)
+        self.lang_layout.addWidget(self.lang_label)
+        self.lang_layout.addWidget(self.lang_combo)
+        self.layout.addLayout(self.lang_layout)
         
         # Icon
         self.icon_label = QLabel("🛡️")
@@ -23,20 +40,13 @@ class WizardWindow(QWidget):
         self.layout.addWidget(self.icon_label)
         
         # Title
-        self.title_label = QLabel("Rootless Background Checks")
+        self.title_label = QLabel(get_text("wizard_welcome"))
         self.title_label.setAlignment(Qt.AlignCenter)
         self.title_label.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         self.layout.addWidget(self.title_label)
         
         # Description
-        self.desc_label = QLabel(
-            "To accurately check for Tumbleweed vendor conflicts in the background,\n"
-            "this app needs to run 'sudo zypper dup --dry-run'.\n\n"
-            "Normally, this requires your password every 4 hours.\n\n"
-            "We can install a secure sudoers rule that allows ONLY this specific dry-run\n"
-            "command to scan without asking for a password.\n"
-            "(Actual updates still require your password)"
-        )
+        self.desc_label = QLabel(get_text("wizard_desc"))
         self.desc_label.setAlignment(Qt.AlignCenter)
         self.desc_label.setStyleSheet("font-size: 14px; color: #d4d4d4;")
         self.layout.addWidget(self.desc_label)
@@ -44,7 +54,7 @@ class WizardWindow(QWidget):
         # Buttons
         self.btn_layout = QHBoxLayout()
         
-        self.skip_btn = QPushButton("Skip (Manual Checks Only)")
+        self.skip_btn = QPushButton(get_text("wizard_skip"))
         self.skip_btn.setFixedSize(220, 45)
         self.skip_btn.setStyleSheet("""
             QPushButton {
@@ -58,7 +68,7 @@ class WizardWindow(QWidget):
         """)
         self.skip_btn.clicked.connect(self.on_skip)
         
-        self.install_btn = QPushButton("Install Rule (Requires Root)")
+        self.install_btn = QPushButton(get_text("wizard_action"))
         self.install_btn.setFixedSize(220, 45)
         self.install_btn.setStyleSheet("""
             QPushButton {
@@ -79,7 +89,23 @@ class WizardWindow(QWidget):
         self._apply_dark_theme()
 
     def _apply_dark_theme(self):
-        self.setStyleSheet("QWidget { background-color: #282828; }")
+        self.setStyleSheet("""
+            QWidget { background-color: #282828; color: white; }
+            QComboBox { background: #333; color: white; border: 1px solid #555; border-radius: 4px; padding: 3px; }
+            QComboBox::drop-down { border: none; }
+        """)
+        
+    def _on_lang_changed(self, index):
+        lang = "sk" if index == 1 else "en"
+        self.settings.setValue("language", lang)
+        self.refresh_texts()
+
+    def refresh_texts(self):
+        self.setWindowTitle(get_text("wizard_title"))
+        self.title_label.setText(get_text("wizard_welcome"))
+        self.desc_label.setText(get_text("wizard_desc"))
+        self.skip_btn.setText(get_text("wizard_skip"))
+        self.install_btn.setText(get_text("wizard_action"))
         
     def on_skip(self):
         self.setup_skipped.emit()
@@ -128,6 +154,6 @@ class WizardWindow(QWidget):
         err.exec()
         
     def _reset_buttons(self):
-        self.install_btn.setText("Install Rule (Requires Root)")
+        self.install_btn.setText(get_text("wizard_action"))
         self.install_btn.setEnabled(True)
         self.skip_btn.setEnabled(True)

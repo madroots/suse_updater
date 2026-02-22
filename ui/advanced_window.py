@@ -3,13 +3,14 @@ from PySide6.QtWidgets import (
     QCheckBox, QPushButton, QHBoxLayout, QGroupBox, QTabWidget
 )
 from PySide6.QtCore import Qt, Signal
+from i18n import get_text
 
 class AdvancedWindow(QWidget):
     update_selected = Signal(bool, list, list) # run_zypper, system_apps, user_apps
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Advanced Logistics & Selective Updates")
+        self.setWindowTitle(get_text("selective_updates"))
         self.resize(750, 600)
         
         self.layout = QVBoxLayout(self)
@@ -21,7 +22,7 @@ class AdvancedWindow(QWidget):
         self.tab_flatpaks = QWidget()
         self.fp_layout = QVBoxLayout(self.tab_flatpaks)
         
-        self.fp_info = QLabel("Select specific components to update individually:")
+        self.fp_info = QLabel(get_text("selective_updates") + ":")
         self.fp_info.setStyleSheet("padding: 5px; color: #ccc;")
         self.fp_layout.addWidget(self.fp_info)
         
@@ -38,18 +39,18 @@ class AdvancedWindow(QWidget):
         self.fp_scroll.setWidget(self.fp_scroll_content)
         self.fp_layout.addWidget(self.fp_scroll, stretch=1)
         
-        self.update_btn = QPushButton("Run Selected Updates")
+        self.update_btn = QPushButton(get_text("update_all"))
         self.update_btn.clicked.connect(self._on_update_clicked)
         self.update_btn.setEnabled(False)
         self.fp_layout.addWidget(self.update_btn)
         
-        self.tabs.addTab(self.tab_flatpaks, "Selective Updates")
+        self.tabs.addTab(self.tab_flatpaks, get_text("selective_updates"))
         
         # --- Tab 2: Raw Logs ---
         self.tab_logs = QWidget()
         self.log_layout = QVBoxLayout(self.tab_logs)
         
-        self.log_label = QLabel("Raw console output from background checks and updates:")
+        self.log_label = QLabel(get_text("raw_logs") + ":")
         self.log_layout.addWidget(self.log_label)
         
         self.log_area = QTextEdit()
@@ -66,7 +67,7 @@ class AdvancedWindow(QWidget):
         """)
         self.log_layout.addWidget(self.log_area, stretch=1)
         
-        self.tabs.addTab(self.tab_logs, "Terminal Logs")
+        self.logs_tab_index = self.tabs.addTab(self.tab_logs, get_text("raw_logs"))
         
         self._apply_theme()
 
@@ -94,21 +95,21 @@ class AdvancedWindow(QWidget):
         self.usr_checkboxes.clear()
         
         if not has_zypper and not system_apps and not user_apps:
-            self.fp_scroll_layout.addWidget(QLabel("No updates available."))
+            self.fp_scroll_layout.addWidget(QLabel(get_text("no_updates")))
             self.update_btn.setEnabled(False)
             return
 
         self.update_btn.setEnabled(True)
         
         if has_zypper:
-            self.fp_scroll_layout.addWidget(QLabel("<b>OS Update (Zypper):</b>"))
-            self.zypper_checkbox = QCheckBox("OpenSUSE System Packages")
+            self.fp_scroll_layout.addWidget(QLabel(f"<b>{get_text('os_update_zypper')}:</b>"))
+            self.zypper_checkbox = QCheckBox("OpenSUSE System Packages") # Packages names themselves aren't usually translated
             self.zypper_checkbox.setChecked(True)
             self.fp_scroll_layout.addWidget(self.zypper_checkbox)
             self.fp_scroll_layout.addWidget(QLabel("")) # Spacing
             
         if system_apps:
-            self.fp_scroll_layout.addWidget(QLabel("<b>System Flatpaks:</b>"))
+            self.fp_scroll_layout.addWidget(QLabel(f"<b>System {get_text('apps_flatpaks')}:</b>"))
             for app in system_apps:
                 cb = QCheckBox(app)
                 cb.setChecked(True)
@@ -117,7 +118,7 @@ class AdvancedWindow(QWidget):
             self.fp_scroll_layout.addWidget(QLabel("")) # Spacing
                 
         if user_apps:
-            self.fp_scroll_layout.addWidget(QLabel("<b>User Flatpaks:</b>"))
+            self.fp_scroll_layout.addWidget(QLabel(f"<b>User {get_text('apps_flatpaks')}:</b>"))
             for app in user_apps:
                 cb = QCheckBox(app)
                 cb.setChecked(True)
@@ -135,6 +136,14 @@ class AdvancedWindow(QWidget):
         
     def append_log(self, text):
         self.log_area.append(text)
+
+    def refresh_texts(self):
+        self.setWindowTitle(get_text("selective_updates"))
+        self.fp_info.setText(get_text("selective_updates") + ":")
+        self.update_btn.setText(get_text("update_all"))
+        self.tabs.setTabText(0, get_text("selective_updates"))
+        self.tabs.setTabText(1, get_text("raw_logs"))
+        self.log_label.setText(get_text("raw_logs") + ":")
 
     def _on_update_clicked(self):
         run_zyp = self.zypper_checkbox.isChecked() if self.zypper_checkbox else False

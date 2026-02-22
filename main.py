@@ -7,8 +7,10 @@ from PySide6.QtCore import QTimer
 
 from ui.main_window import MainWindow
 from ui.wizard_window import WizardWindow
+from ui.settings_window import SettingsWindow
 from update_checker import UpdateChecker
 from updater_runner import UpdaterRunner
+from i18n import get_text
 
 logging.basicConfig(level=logging.INFO)
 
@@ -31,23 +33,34 @@ class UpdateApp:
         self.tray = QSystemTrayIcon(self.icon_green, self.app)
         self.tray_menu = QMenu()
         
-        self.action_show = self.tray_menu.addAction("Show Status")
+        self.action_show = self.tray_menu.addAction(get_text("title"))
         self.action_show.triggered.connect(self.main_window.show)
         
-        self.action_check = self.tray_menu.addAction("Check for Updates")
+        self.action_check = self.tray_menu.addAction(get_text("checking"))
         self.action_check.triggered.connect(self.start_check)
+        
+        self.action_settings = self.tray_menu.addAction(get_text("settings"))
+        self.action_settings.triggered.connect(self.show_settings)
+        
+        self.tray_menu.addSeparator()
         
         self.action_quit = self.tray_menu.addAction("Quit")
         self.action_quit.triggered.connect(self.app.quit)
         
         self.tray.setContextMenu(self.tray_menu)
+        self.tray.activated.connect(self.tray_activated)
         self.tray.show()
         
-        self.tray.activated.connect(self.tray_activated)
-        
-        # Connect update buttons
+        # Connect window buttons
         self.main_window.update_btn.clicked.connect(self.run_updates)
+        self.main_window.settings_btn.clicked.connect(self.show_settings)
         self.main_window.advanced_window.update_selected.connect(self.run_custom_updates)
+        
+        # Initialize Settings & Settings Manager
+        self.settings_window = SettingsWindow()
+        self.settings_window.trigger_wizard.connect(self.run_wizard)
+        self.settings_window.trigger_logs.connect(self.main_window.show_logs)
+        self.settings_window.settings_changed.connect(self.on_settings_saved)
 
         
         # Check rule installation on startup by actually testing the command
@@ -64,14 +77,14 @@ class UpdateApp:
             self.run_wizard()
             
     def run_wizard(self):
-        logging.info("Polkit rule not found. Showing wizard.")
+        logging.info("Sudoers rule not found. Showing wizard.")
         self.wizard = WizardWindow()
         self.wizard.setup_complete.connect(self.setup_complete)
         self.wizard.setup_skipped.connect(self.setup_skipped)
         self.wizard.show()
         
     def setup_complete(self):
-        logging.info("Polkit rule is installed. Enabling automatic background checks.")
+        logging.info("Sudoers rule is installed. Enabling automatic background checks.")
         # Start automatic checks
         self.start_check()
         self.timer = QTimer()
@@ -90,10 +103,36 @@ class UpdateApp:
                 self.main_window.hide()
             else:
                 self.main_window.show()
-                
+
+    def refresh_all_texts(self):
+        self.main_window.refresh_texts()
+        self.settings_window.refresh_texts()
+        if hasattr(self, 'wizard'):
+            self.wizard.refresh_texts()
+        
+        # Update tray menu
+        self.action_show.setText(get_text("title"))
+        self.action_check.setText(get_text("checking"))
+        self.action_settings.setText(get_text("settings"))
+
+    def on_settings_saved(self):
+        self.refresh_all_texts()
+        self.start_check() # Re-check engines
+
+    def show_settings(self):
+        # Ensure it has latest settings/lang
+        self.settings_window.refresh_texts()
+        self.settings_window.show()
+
     def start_check(self):
         self.main_window.set_status("checking")
-        self.checker = UpdateChecker()
+        
+        from PySide6.QtCore import QSettings
+        settings = QSettings("SuseUpdater", "OpenSUSE_Tool")
+        check_zyp = settings.value("check_zypper", True, type=bool)
+        check_fp = settings.value("check_flatpak", True, type=bool)
+        
+        self.checker = UpdateChecker(check_zyp, check_fp)
         self.checker.updates_found.connect(self.process_check_results)
         self.checker.start()
         
@@ -109,12 +148,12 @@ class UpdateApp:
         
         if has_conflict:
             self.main_window.set_status("conflicts", updates_data=results)
-            self._update_tray_icon("red")
-            self.tray.showMessage("Update Issue", "Vendor conflict detected. Suggest waiting!", QSystemTrayIcon.Warning)
+            self._update_tray_icon("yellow")
+            self.tray.showMessage(get_text("conflicts_title"), get_text("conflicts_desc"), QSystemTrayIcon.Warning)
         elif has_zypper_updates or has_flatpak_updates:
             self.main_window.set_status("updates_ready", updates_data=results)
             self._update_tray_icon("yellow")
-            self.tray.showMessage("Updates Available", "Click to review and apply updates.", QSystemTrayIcon.Information)
+            self.tray.showMessage(get_text("updates_available_title"), get_text("wait_query"), QSystemTrayIcon.Information)
         else:
             self.main_window.set_status("up_to_date")
             self._update_tray_icon("green")
