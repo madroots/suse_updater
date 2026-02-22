@@ -49,29 +49,29 @@ jobs:
         
         # Desktop Reference
         cat > AppDir/suse-updater.desktop <<EOF
-[Desktop Entry]
-Type=Application
-Name=SUSE Updater
-Exec=suse-updater
-Icon=suse-updater
-Categories=System;Settings;
-Comment=Safe and simple updates for OpenSUSE Tumbleweed
-Terminal=false
-EOF
+        [Desktop Entry]
+        Type=Application
+        Name=SUSE Updater
+        Exec=suse-updater
+        Icon=suse-updater
+        Categories=System;Settings;
+        Comment=Safe and simple updates for OpenSUSE Tumbleweed
+        Terminal=false
+        EOF
         
         # AppRun script
         find AppDir -name AppRun -delete
         cat > AppDir/AppRun <<'EOF'
-#!/bin/bash
-HERE=$(dirname "$(readlink -f "$0")")
-export PYTHONHOME="$HERE/opt/python3.9"
-export PYTHONPATH="$HERE/opt/python3.9/lib/python3.9/site-packages:$HERE"
-export PATH="$HERE/opt/python3.9/bin:$PATH"
-export LD_LIBRARY_PATH="$HERE/opt/python3.9/lib:$HERE/opt/python3.9/lib/python3.9/site-packages/PySide6/Qt/lib:$LD_LIBRARY_PATH"
-export QT_PLUGIN_PATH="$HERE/opt/python3.9/lib/python3.9/site-packages/PySide6/Qt/plugins"
-export QT_X11_NO_MITSHM=1
-exec "$HERE/opt/python3.9/bin/python3.9" "$HERE/main.py" "$@"
-EOF
+        #!/bin/bash
+        HERE=$(dirname "$(readlink -f "$0")")
+        export PYTHONHOME="$HERE/opt/python3.9"
+        export PYTHONPATH="$HERE/opt/python3.9/lib/python3.9/site-packages:$HERE"
+        export PATH="$HERE/opt/python3.9/bin:$PATH"
+        export LD_LIBRARY_PATH="$HERE/opt/python3.9/lib:$HERE/opt/python3.9/lib/python3.9/site-packages/PySide6/Qt/lib:$LD_LIBRARY_PATH"
+        export QT_PLUGIN_PATH="$HERE/opt/python3.9/lib/python3.9/site-packages/PySide6/Qt/plugins"
+        export QT_X11_NO_MITSHM=1
+        exec "$HERE/opt/python3.9/bin/python3.9" "$HERE/main.py" "$@"
+        EOF
         chmod +x AppDir/AppRun
         
     - name: Package AppImage
