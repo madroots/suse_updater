@@ -56,7 +56,7 @@ jobs:
         Name=SUSE Updater
         Exec=suse-updater
         Icon=io.github.madroots.suse-updater
-        Categories=Qt;Utility;Gui;System;Settings;
+        Categories=Qt;System;
         Comment=Safe and simple updates for OpenSUSE Tumbleweed
         Terminal=false
         StartupWMClass=io.github.madroots.suse-updater
