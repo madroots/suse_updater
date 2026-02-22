@@ -1,0 +1,15 @@
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.opensuse.cupspkhelper.mechanism.all-edit" || 
+        action.id == "org.freedesktop.policykit.exec") {
+        
+        // We only want to allow zypper dup --dry-run without password
+        var cmd = action.lookup("program");
+        var args = action.lookup("command_line");
+        
+        if (cmd == "/usr/bin/zypper" && 
+            args != null && 
+            args.indexOf("zypper --non-interactive dup --dry-run") != -1) {
+            return polkit.Result.YES;
+        }
+    }
+});
