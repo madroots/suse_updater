@@ -72,6 +72,7 @@ jobs:
         StartupWMClass=io.github.madroots.suse-updater
         X-AppImage-Name=SUSE Updater
         X-AppImage-Identifier=io.github.madroots.suse-updater
+        X-AppImage-Version=0.1.6
         EOF
         
         # Links for compat

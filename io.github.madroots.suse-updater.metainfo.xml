@@ -14,4 +14,7 @@
   </description>
   <launchable type="desktop-id">io.github.madroots.suse-updater.desktop</launchable>
   <content_rating type="oars-1.1" />
+  <releases>
+    <release version="0.1.6" date="2024-03-05" />
+  </releases>
 </component>

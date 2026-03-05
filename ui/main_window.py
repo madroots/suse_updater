@@ -11,7 +11,7 @@ from i18n import get_text
 class MainWindow(QMainWindow):
     def __init__(self, check_icon, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(get_text("title"))
+        self.setWindowTitle(f"{get_text('title')} v0.1.6")
         self.setMinimumSize(500, 450) # Increased min height and allowed growth
         
         # Save a reference to the main app's icon for checking state
@@ -162,7 +162,7 @@ class MainWindow(QMainWindow):
             self.status_icon.setStyleSheet("font-size: 64px;")
 
     def refresh_texts(self):
-        self.setWindowTitle(get_text("title"))
+        self.setWindowTitle(f"{get_text('title')} v0.1.6")
         self.update_btn.setText(get_text("update_all"))
         self.adv_btn.setText(get_text("advanced"))
         self.logs_btn.setText(get_text("real_time_logs"))
