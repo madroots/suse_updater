@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QLabel, QPushButton, QProgressBar, QSystemTrayIcon
 )
-from PySide6.QtCore import Qt, QSize, QSettings, QPropertyAnimation, Property
+from PySide6.QtCore import Qt, QSize, QSettings, QPropertyAnimation, Property, QRect
 from PySide6.QtGui import QIcon, QFont, QColor, QPalette, QPixmap, QPainter
 from .advanced_window import AdvancedWindow
 from i18n import get_text
@@ -12,6 +12,7 @@ class RotatingLabel(QLabel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._angle = 0
+        self.setFixedSize(100, 100) # Increased fixed size to prevent clipping
         self.animation = QPropertyAnimation(self, b"angle")
         self.animation.setDuration(2000)
         self.animation.setStartValue(0)
@@ -45,15 +46,21 @@ class RotatingLabel(QLabel):
         painter.rotate(self._angle)
         
         # Draw the content centered
-        if self.pixmap():
+        if not self.pixmap().isNull():
             pm = self.pixmap()
             painter.drawPixmap(-pm.width() / 2, -pm.height() / 2, pm)
         elif self.text():
-            painter.setFont(self.font())
+            font = self.font()
+            # If the styleSheet set 64px, make sure font object matches
+            if "font-size" in self.styleSheet():
+                 font.setPixelSize(64)
+            painter.setFont(font)
             painter.setPen(self.palette().color(QPalette.WindowText))
-            # Draw text centered (emoji)
-            rect = self.fontMetrics().boundingRect(self.text())
-            painter.drawText(-rect.width() / 2, -rect.height() / 2 + rect.height()/4, self.text())
+            
+            # Using a rectangle for perfect centering
+            # We use a slightly smaller rect to ensure it's truly centered relative to the widget center
+            rect = QRect(-50, -50, 100, 100)
+            painter.drawText(rect, Qt.AlignCenter, self.text())
 
 class MainWindow(QMainWindow):
     def __init__(self, check_icon, parent=None):
