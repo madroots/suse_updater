@@ -51,16 +51,21 @@ class RotatingLabel(QLabel):
             painter.drawPixmap(-pm.width() / 2, -pm.height() / 2, pm)
         elif self.text():
             font = self.font()
-            # If the styleSheet set 64px, make sure font object matches
             if "font-size" in self.styleSheet():
                  font.setPixelSize(64)
             painter.setFont(font)
             painter.setPen(self.palette().color(QPalette.WindowText))
+
+            # Use tightBoundingRect to get the actual pixels of the emoji
+            fm = painter.fontMetrics()
+            br = fm.tightBoundingRect(self.text())
             
-            # Using a rectangle for perfect centering
-            # We use a slightly smaller rect to ensure it's truly centered relative to the widget center
-            rect = QRect(-50, -50, 100, 100)
-            painter.drawText(rect, Qt.AlignCenter, self.text())
+            # Calculate the visual center offset
+            # br.x() and br.y() are often negative or non-zero depending on the glyph
+            offset_x = -(br.x() + br.width() / 2)
+            offset_y = -(br.y() + br.height() / 2)
+            
+            painter.drawText(offset_x, offset_y, self.text())
 
 class MainWindow(QMainWindow):
     def __init__(self, check_icon, parent=None):
