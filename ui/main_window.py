@@ -3,10 +3,57 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QLabel, QPushButton, QProgressBar, QSystemTrayIcon
 )
-from PySide6.QtCore import Qt, QSize, QSettings
-from PySide6.QtGui import QIcon, QFont, QColor, QPalette, QPixmap
+from PySide6.QtCore import Qt, QSize, QSettings, QPropertyAnimation, Property
+from PySide6.QtGui import QIcon, QFont, QColor, QPalette, QPixmap, QPainter
 from .advanced_window import AdvancedWindow
 from i18n import get_text
+
+class RotatingLabel(QLabel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._angle = 0
+        self.animation = QPropertyAnimation(self, b"angle")
+        self.animation.setDuration(2000)
+        self.animation.setStartValue(0)
+        self.animation.setEndValue(360)
+        self.animation.setLoopCount(-1) # Infinite
+
+    @Property(int)
+    def angle(self):
+        return self._angle
+
+    @angle.setter
+    def angle(self, value):
+        self._angle = value
+        self.update()
+
+    def start_rotation(self):
+        if self.animation.state() != QPropertyAnimation.Running:
+            self.animation.start()
+
+    def stop_rotation(self):
+        self.animation.stop()
+        self._angle = 0
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        # Center the coordinate system
+        painter.translate(self.width() / 2, self.height() / 2)
+        painter.rotate(self._angle)
+        
+        # Draw the content centered
+        if self.pixmap():
+            pm = self.pixmap()
+            painter.drawPixmap(-pm.width() / 2, -pm.height() / 2, pm)
+        elif self.text():
+            painter.setFont(self.font())
+            painter.setPen(self.palette().color(QPalette.WindowText))
+            # Draw text centered (emoji)
+            rect = self.fontMetrics().boundingRect(self.text())
+            painter.drawText(-rect.width() / 2, -rect.height() / 2 + rect.height()/4, self.text())
 
 class MainWindow(QMainWindow):
     def __init__(self, check_icon, parent=None):
@@ -47,7 +94,7 @@ class MainWindow(QMainWindow):
         self.layout.addStretch()
 
         # Main Status Icon (placeholder text/icon)
-        self.status_icon = QLabel()
+        self.status_icon = RotatingLabel()
         self.status_icon.setAlignment(Qt.AlignCenter)
         self.content_layout.addWidget(self.status_icon)
         
@@ -178,7 +225,8 @@ class MainWindow(QMainWindow):
         self.last_updates_data = updates_data
         
         if state == "checking":
-            self._set_large_icon(qicon=self.check_icon)
+            self._set_large_icon(emoji="⚙️")
+            self.status_icon.start_rotation()
             self.status_label.setText(get_text("checking"))
             self.status_label.setStyleSheet("color: white;")
             self.details_label.setText(get_text("wait_query"))
@@ -186,9 +234,11 @@ class MainWindow(QMainWindow):
             self.adv_btn.hide()
             self.logs_btn.hide()
             self.progress_bar.hide()
+            self.refresh_link.hide() # Hide link when clicked
             self.advanced_window.set_updating(True)
             
         elif state == "up_to_date":
+            self.status_icon.stop_rotation()
             self._set_large_icon(emoji="🎉")
             self.status_label.setText(get_text("up_to_date"))
             self.status_label.setStyleSheet("color: #00C853;")
@@ -213,6 +263,7 @@ class MainWindow(QMainWindow):
             self.advanced_window.set_updating(False)
             
         elif state == "updates_ready":
+            self.status_icon.stop_rotation()
             self._set_large_icon(emoji="📦")
             self.status_label.setText(get_text("updates_available_title"))
             self.status_label.setStyleSheet("color: #FFD740;")
@@ -246,6 +297,7 @@ class MainWindow(QMainWindow):
             self.advanced_window.set_updating(False)
             
         elif state == "conflicts":
+            self.status_icon.stop_rotation()
             self._set_large_icon(emoji="⚠️")
             self.status_label.setText(get_text("conflicts_title"))
             self.status_label.setStyleSheet("color: #FFD740;")
@@ -281,6 +333,7 @@ class MainWindow(QMainWindow):
             
         elif state == "updating":
             self._set_large_icon(emoji="⚙️")
+            self.status_icon.start_rotation()
             self.status_label.setText(get_text("updating_title"))
             self.status_label.setStyleSheet("color: white;")
             self.details_label.setText(get_text("applying_changes"))

@@ -98,7 +98,7 @@ TRANSLATIONS = {
         "tray_check": "Skontrolovať dostupné aktualizácie",
         "tray_settings": "Nastavenia",
         "tray_quit": "Ukončiť",
-        "check_updates_link": "vyhľadať aktualizácie",
+        "check_updates_link": "Vyhľadať aktualizácie",
         
         # Settings
         "settings_title": "Nastavenia systémového aktualizátora",
