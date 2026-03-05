@@ -40,17 +40,27 @@ jobs:
     - name: Configure AppDir
       run: |
         mkdir -p AppDir/usr/bin
-        mkdir -p AppDir/usr/share/metainfo
         # Copy source files
         cp -r main.py i18n.py update_checker.py updater_runner.py ui assets install_sudoers.sh AppDir/
+        
+        # Metadata Cleanup & Required Directories
+        mkdir -p AppDir/usr/share/applications
+        mkdir -p AppDir/usr/share/icons/hicolor/scalable/apps
+        mkdir -p AppDir/usr/share/metainfo
+        
+        # Remove base image junk to avoid validation errors
+        rm -f AppDir/usr/share/metainfo/python3.9.25.appdata.xml
+        
+        # Metadata Placement
         cp io.github.madroots.suse-updater.metainfo.xml AppDir/usr/share/metainfo/
         
         # Icon
-        cp -f assets/icons/tray_green.svg AppDir/io.github.madroots.suse-updater.svg
+        cp -f assets/icons/tray_green.svg AppDir/usr/share/icons/hicolor/scalable/apps/io.github.madroots.suse-updater.svg
+        ln -sf usr/share/icons/hicolor/scalable/apps/io.github.madroots.suse-updater.svg AppDir/io.github.madroots.suse-updater.svg
         ln -sf io.github.madroots.suse-updater.svg AppDir/.DirIcon
         
         # Desktop Reference
-        cat > AppDir/io.github.madroots.suse-updater.desktop <<EOF
+        cat > AppDir/usr/share/applications/io.github.madroots.suse-updater.desktop <<EOF
         [Desktop Entry]
         Type=Application
         Name=SUSE Updater
@@ -64,7 +74,8 @@ jobs:
         X-AppImage-Identifier=io.github.madroots.suse-updater
         EOF
         
-        # Link for compat
+        # Links for compat
+        ln -sf usr/share/applications/io.github.madroots.suse-updater.desktop AppDir/io.github.madroots.suse-updater.desktop
         ln -sf io.github.madroots.suse-updater.desktop AppDir/suse-updater.desktop
         
         # AppRun script
