@@ -12,7 +12,7 @@ class RotatingLabel(QLabel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._angle = 0
-        self.setFixedSize(100, 100) # Increased fixed size to prevent clipping
+        self.setFixedSize(120, 120) # Increased fixed size to prevent clipping
         self.animation = QPropertyAnimation(self, b"angle")
         self.animation.setDuration(2000)
         self.animation.setStartValue(0)
@@ -41,31 +41,44 @@ class RotatingLabel(QLabel):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         
-        # Center the coordinate system
-        painter.translate(self.width() / 2, self.height() / 2)
-        painter.rotate(self._angle)
-        
-        # Draw the content centered
+        # 1. Handle Pixmap content
         if not self.pixmap().isNull():
             pm = self.pixmap()
+            painter.translate(self.width() / 2, self.height() / 2)
+            painter.rotate(self._angle)
             painter.drawPixmap(-pm.width() / 2, -pm.height() / 2, pm)
-        elif self.text():
+            return
+
+        # 2. Handle Text (Emoji) content with a temporary buffer for perfect centering
+        if self.text():
+            temp_pm = QPixmap(120, 120)
+            temp_pm.fill(Qt.transparent)
+            
+            p_temp = QPainter(temp_pm)
+            p_temp.setRenderHint(QPainter.Antialiasing)
+            p_temp.setRenderHint(QPainter.TextAntialiasing)
+            
             font = self.font()
             if "font-size" in self.styleSheet():
-                 font.setPixelSize(64)
-            painter.setFont(font)
-            painter.setPen(self.palette().color(QPalette.WindowText))
-
-            # Use tightBoundingRect to get the actual pixels of the emoji
-            fm = painter.fontMetrics()
-            br = fm.tightBoundingRect(self.text())
+                 # Handle "64px" -> 64
+                 import re
+                 match = re.search(r'(\d+)px', self.styleSheet())
+                 if match:
+                     font.setPixelSize(int(match.group(1)))
+                 else:
+                     font.setPointSize(48) # Fallback
             
-            # Calculate the visual center offset
-            # br.x() and br.y() are often negative or non-zero depending on the glyph
-            offset_x = -(br.x() + br.width() / 2)
-            offset_y = -(br.y() + br.height() / 2)
+            p_temp.setFont(font)
+            p_temp.setPen(self.palette().color(QPalette.WindowText))
             
-            painter.drawText(offset_x, offset_y, self.text())
+            # Draw text perfectly centered in the 120x120 pixmap
+            p_temp.drawText(QRect(0, 0, 120, 120), Qt.AlignCenter, self.text())
+            p_temp.end()
+            
+            # Now draw the rotated buffer
+            painter.translate(self.width() / 2, self.height() / 2)
+            painter.rotate(self._angle)
+            painter.drawPixmap(-60, -60, temp_pm)
 
 class MainWindow(QMainWindow):
     def __init__(self, check_icon, parent=None):
