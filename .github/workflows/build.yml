@@ -52,21 +52,18 @@ jobs:
         rm -f AppDir/usr/share/metainfo/python3.9.25.appdata.xml
         
         # Metadata Placement (Physical file in root for Gear Lever)
-        # We use sed to strip leading spaces so YAML stays valid but file is clean
-        sed 's/^        //' > AppDir/io.github.madroots.suse-updater.desktop <<EOF
-        [Desktop Entry]
-        Type=Application
-        Name=SUSE Updater
-        Exec=io.github.madroots.suse-updater
-        Icon=io.github.madroots.suse-updater
-        Categories=Utility;System;Qt;
-        Comment=Safe and simple updates for OpenSUSE Tumbleweed
-        Terminal=false
-        StartupWMClass=io.github.madroots.suse-updater
-        X-AppImage-Name=SUSE Updater
-        X-AppImage-Identifier=io.github.madroots.suse-updater
-        X-AppImage-Version=0.1.6
-        EOF
+        printf "[Desktop Entry]\n\
+        Type=Application\n\
+        Name=SUSE Updater\n\
+        Exec=io.github.madroots.suse-updater\n\
+        Icon=io.github.madroots.suse-updater\n\
+        Categories=Utility;System;Qt;\n\
+        Comment=Safe and simple updates for OpenSUSE Tumbleweed\n\
+        Terminal=false\n\
+        StartupWMClass=io.github.madroots.suse-updater\n\
+        X-AppImage-Name=SUSE Updater\n\
+        X-AppImage-Identifier=io.github.madroots.suse-updater\n\
+        X-AppImage-Version=0.1.6\n" | sed 's/^ *//' > AppDir/io.github.madroots.suse-updater.desktop
         
         # internal directory structure for AppStream/system compatibility
         ln -sf ../../../io.github.madroots.suse-updater.desktop AppDir/usr/share/applications/io.github.madroots.suse-updater.desktop
@@ -85,17 +82,15 @@ jobs:
         
         # AppRun script (re-create to ensure clean paths)
         find AppDir -name AppRun -delete
-        sed 's/^        //' > AppDir/AppRun <<'EOF'
-        #!/bin/bash
-        HERE=$(dirname "$(readlink -f "$0")")
-        export PYTHONHOME="$HERE/opt/python3.9"
-        export PYTHONPATH="$HERE/opt/python3.9/lib/python3.9/site-packages:$HERE"
-        export PATH="$HERE/opt/python3.9/bin:$PATH"
-        export LD_LIBRARY_PATH="$HERE/opt/python3.9/lib:$HERE/opt/python3.9/lib/python3.9/site-packages/PySide6/Qt/lib:$LD_LIBRARY_PATH"
-        export QT_PLUGIN_PATH="$HERE/opt/python3.9/lib/python3.9/site-packages/PySide6/Qt/plugins"
-        export QT_X11_NO_MITSHM=1
-        exec "$HERE/opt/python3.9/bin/python3.9" "$HERE/main.py" "$@"
-        EOF
+        printf "#!/bin/bash\n\
+        HERE=\$(dirname \"\$(readlink -f \"\$0\")\")\n\
+        export PYTHONHOME=\"\$HERE/opt/python3.9\"\n\
+        export PYTHONPATH=\"\$HERE/opt/python3.9/lib/python3.9/site-packages:\$HERE\"\n\
+        export PATH=\"\$HERE/opt/python3.9/bin:\$PATH\"\n\
+        export LD_LIBRARY_PATH=\"\$HERE/opt/python3.9/lib:\$HERE/opt/python3.9/lib/python3.9/site-packages/PySide6/Qt/lib:\$LD_LIBRARY_PATH\"\n\
+        export QT_PLUGIN_PATH=\"\$HERE/opt/python3.9/lib/python3.9/site-packages/PySide6/Qt/plugins\"\n\
+        export QT_X11_NO_MITSHM=1\n\
+        exec \"\$HERE/opt/python3.9/bin/python3.9\" \"\$HERE/main.py\" \"\$@\"\n" | sed 's/^ *//' > AppDir/AppRun
         chmod +x AppDir/AppRun
         
     - name: Package AppImage
