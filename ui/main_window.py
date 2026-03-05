@@ -12,7 +12,7 @@ class MainWindow(QMainWindow):
     def __init__(self, check_icon, parent=None):
         super().__init__(parent)
         self.setWindowTitle(get_text("title"))
-        self.setFixedSize(500, 400) # Increased height and fixed size
+        self.setMinimumSize(500, 450) # Increased min height and allowed growth
         
         # Save a reference to the main app's icon for checking state
         self.check_icon = check_icon
@@ -55,6 +55,7 @@ class MainWindow(QMainWindow):
         self.status_label = QLabel(get_text("checking"))
         self.status_label.setAlignment(Qt.AlignCenter)
         self.status_label.setFont(QFont("Arial", 16, QFont.Bold))
+        self.status_label.setWordWrap(True)
         self.content_layout.addWidget(self.status_label)
         
         # Sub Status Text (e.g. details about updates)
@@ -62,8 +63,16 @@ class MainWindow(QMainWindow):
         self.details_label.setAlignment(Qt.AlignCenter)
         self.details_label.setStyleSheet("color: #ccc; font-size: 13px;")
         self.details_label.setWordWrap(True)
-        self.details_label.setMinimumHeight(60)
+        self.details_label.setMinimumHeight(80) # Increased min height for wrap safety
         self.content_layout.addWidget(self.details_label)
+        
+        # Check for Updates Link (clickable text)
+        self.refresh_link = QLabel()
+        self.refresh_link.setAlignment(Qt.AlignCenter)
+        self.refresh_link.setStyleSheet("color: #3498db; text-decoration: underline; font-size: 12px;")
+        self.refresh_link.setCursor(Qt.PointingHandCursor)
+        self.refresh_link.mousePressEvent = self._on_refresh_link_clicked
+        self.content_layout.addWidget(self.refresh_link)
         
         # Update Button
         self.update_btn = QPushButton(get_text("update_all"))
@@ -135,6 +144,13 @@ class MainWindow(QMainWindow):
         self.advanced_window.tabs.setCurrentIndex(1) # Go directly to logs tab
         self.advanced_window.show()
         
+    def _on_refresh_link_clicked(self, event):
+        # We'll emit a signal or just call a method if we have a reference to the app
+        # For simplicity, we can assume the parent or a global app object exists, 
+        # but better to have a signal.
+        if hasattr(self, 'refresh_requested_callback'):
+            self.refresh_requested_callback()
+
     def _set_large_icon(self, qicon=None, emoji=""):
         if qicon:
             pixmap = qicon.pixmap(80, 80)
@@ -192,6 +208,8 @@ class MainWindow(QMainWindow):
             self.adv_btn.hide()
             self.logs_btn.hide()
             self.progress_bar.hide()
+            self.refresh_link.setText(get_text("check_updates_link"))
+            self.refresh_link.show()
             self.advanced_window.set_updating(False)
             
         elif state == "updates_ready":
@@ -208,19 +226,20 @@ class MainWindow(QMainWindow):
             fu_up_list = updates_data.get('flatpak_user_updates', []) if check_fp else []
             has_flatpak_updates = (len(fs_up_list) + len(fu_up_list)) > 0
             
-            z_text = get_text("updates_available_title") if z_up else get_text("up_to_date")
-            f_text = f"{len(fs_up_list) + len(fu_up_list)} {get_text('apps_flatpaks')}" if has_flatpak_updates else get_text("up_to_date")
+            z_text = get_text("zypper_updates") if z_up else get_text("zypper_uptodate")
+            f_text = get_text("flatpak_updates") if has_flatpak_updates else get_text("flatpak_uptodate")
             
             lines = []
             if check_zyp:
-                lines.append(f"<b>{get_text('os_update_zypper')}:</b> {z_text}")
+                lines.append(z_text)
             if check_fp:
-                lines.append(f"<b>{get_text('apps_flatpaks')}:</b> {f_text}")
+                lines.append(f_text)
                        
             self.details_label.setText("<br>".join(lines))
             self.update_btn.show()
             self.adv_btn.setVisible(has_flatpak_updates) # Only show if flatpaks have updates
             self.logs_btn.hide()
+            self.refresh_link.hide()
             self.update_btn.setText(get_text("update_all"))
             self.update_btn.setEnabled(True)
             self.progress_bar.hide()
@@ -235,11 +254,11 @@ class MainWindow(QMainWindow):
             check_zyp = settings.value("check_zypper", True, type=bool)
             check_fp = settings.value("check_flatpak", True, type=bool)
 
-            z_up = "---" if check_zyp else get_text("up_to_date")
+            z_up = "---" if check_zyp else get_text("zypper_uptodate")
             fs_up_list = updates_data.get('flatpak_system_updates', []) if check_fp else []
             fu_up_list = updates_data.get('flatpak_user_updates', []) if check_fp else []
             has_flatpak_updates = (len(fs_up_list) + len(fu_up_list)) > 0
-            f_text = f"{len(fs_up_list) + len(fu_up_list)} {get_text('apps_flatpaks')}" if has_flatpak_updates else get_text("up_to_date")
+            f_text = get_text("flatpak_updates") if has_flatpak_updates else get_text("flatpak_uptodate")
 
             lines = []
             if check_zyp:
@@ -256,6 +275,8 @@ class MainWindow(QMainWindow):
             self.adv_btn.setVisible(has_flatpak_updates) 
             self.logs_btn.hide()
             self.progress_bar.hide()
+            self.refresh_link.setText(get_text("check_updates_link"))
+            self.refresh_link.show()
             self.advanced_window.set_updating(False)
             
         elif state == "updating":

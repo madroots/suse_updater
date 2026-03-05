@@ -121,20 +121,25 @@ class WizardWindow(QWidget):
             QApplication.processEvents()
             
             # Inline the command to avoid path issues inside AppDir/pkexec scope
-            cmd = 'echo "ALL ALL=(root) NOPASSWD: /usr/bin/zypper --non-interactive dup --dry-run" > /etc/sudoers.d/suse-updater && chmod 440 /etc/sudoers.d/suse-updater'
+            # Allowing both ref and dup --dry-run for fresh background checks
+            sudoers_content = 'ALL ALL=(root) NOPASSWD: /usr/bin/zypper --non-interactive dup --dry-run, /usr/bin/zypper --non-interactive ref'
+            cmd = f'echo "{sudoers_content}" > /etc/sudoers.d/suse-updater && chmod 440 /etc/sudoers.d/suse-updater'
             subprocess.run(["pkexec", "bash", "-c", cmd], check=True)
             
             # Test if the rule actually works!
             self.install_btn.setText("Testing Rule...")
             QApplication.processEvents()
             
-            # If the rule works, this command should succeed WITHOUT asking for a password.
-            # -n tells sudo to fail immediately if a password is required.
+            # If the rule works, these commands should succeed WITHOUT asking for a password.
+            # We test both ref and dry-run
+            ref_cmd = ["sudo", "-n", "zypper", "--non-interactive", "ref"]
             test_cmd = ["sudo", "-n", "zypper", "--non-interactive", "dup", "--dry-run"]
+            
+            ref_proc = subprocess.run(ref_cmd, capture_output=True, text=True)
             test_proc = subprocess.run(test_cmd, capture_output=True, text=True)
             
-            if test_proc.returncode != 0:
-                raise Exception(f"Rule installed, but test failed.\n{test_proc.stderr}")
+            if ref_proc.returncode != 0 or test_proc.returncode != 0:
+                raise Exception(f"Rule installed, but test failed.\nRef exit: {ref_proc.returncode}, Dup exit: {test_proc.returncode}")
 
             self.setup_complete.emit()
             self.close()

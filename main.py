@@ -29,24 +29,29 @@ class UpdateApp:
         self.icon_yellow = QIcon(os.path.join(self.assets_dir, "tray_yellow.svg"))
         self.icon_red = QIcon(os.path.join(self.assets_dir, "tray_red.svg"))
         
+        # Windows
         self.main_window = MainWindow(self.icon_green)
+        self.settings_window = SettingsWindow()
+        
+        # Connect refresh link from main window
+        self.main_window.refresh_requested_callback = self.start_check
         
         # Tray setup
         self.tray = QSystemTrayIcon(self.icon_green, self.app)
         self.tray_menu = QMenu()
         
-        self.action_show = self.tray_menu.addAction(get_text("title"))
+        self.action_show = self.tray_menu.addAction(get_text("tray_open"))
         self.action_show.triggered.connect(self.main_window.show)
         
-        self.action_check = self.tray_menu.addAction(get_text("checking"))
+        self.action_check = self.tray_menu.addAction(get_text("tray_check"))
         self.action_check.triggered.connect(self.start_check)
         
-        self.action_settings = self.tray_menu.addAction(get_text("settings"))
+        self.action_settings = self.tray_menu.addAction(get_text("tray_settings"))
         self.action_settings.triggered.connect(self.show_settings)
         
         self.tray_menu.addSeparator()
         
-        self.action_quit = self.tray_menu.addAction("Quit")
+        self.action_quit = self.tray_menu.addAction(get_text("tray_quit"))
         self.action_quit.triggered.connect(self.app.quit)
         
         self.tray.setContextMenu(self.tray_menu)
@@ -65,17 +70,21 @@ class UpdateApp:
         self.settings_window.settings_changed.connect(self.on_settings_saved)
 
         
-        # Check rule installation on startup by actually testing the command
-        # This is because regular users don't have permission to ls or read /etc/sudoers.d/
+        # Check rule installation on startup by testing both ref and dup
         import subprocess
         try:
-            test_cmd = ["sudo", "-n", "zypper", "--non-interactive", "dup", "--dry-run"]
-            test_proc = subprocess.run(test_cmd, capture_output=True, text=True)
-            if test_proc.returncode == 0:
+            # We test both because existing users might have the old rule (only dup)
+            ref_cmd = ["sudo", "-n", "zypper", "--non-interactive", "ref"]
+            dup_cmd = ["sudo", "-n", "zypper", "--non-interactive", "dup", "--dry-run"]
+            
+            ref_proc = subprocess.run(ref_cmd, capture_output=True, text=True)
+            dup_proc = subprocess.run(dup_cmd, capture_output=True, text=True)
+            
+            if ref_proc.returncode == 0 and dup_proc.returncode == 0:
                 self.setup_complete()
             else:
                 self.run_wizard()
-        except FileNotFoundError:
+        except Exception:
             self.run_wizard()
             
     def run_wizard(self):
@@ -113,9 +122,10 @@ class UpdateApp:
             self.wizard.refresh_texts()
         
         # Update tray menu
-        self.action_show.setText(get_text("title"))
-        self.action_check.setText(get_text("checking"))
-        self.action_settings.setText(get_text("settings"))
+        self.action_show.setText(get_text("tray_open"))
+        self.action_check.setText(get_text("tray_check"))
+        self.action_settings.setText(get_text("tray_settings"))
+        self.action_quit.setText(get_text("tray_quit"))
 
     def on_settings_saved(self):
         self.refresh_all_texts()

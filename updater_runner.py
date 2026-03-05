@@ -19,7 +19,16 @@ class UpdaterRunner(QThread):
         
         try:
             if self.run_zypper:
-                self.update_progress.emit("Running zypper dup (requires root password)...")
+                self.update_progress.emit("Refreshing repositories (zypper ref)...")
+                ref_cmd = ["pkexec", "zypper", "--non-interactive", "ref"]
+                ref_proc = subprocess.Popen(ref_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                for line in iter(ref_proc.stdout.readline, ''):
+                    if line:
+                        full_log += line
+                        self.update_progress.emit(f"Zypper Ref: {line.strip()}")
+                ref_proc.wait()
+                
+                self.update_progress.emit("Running zypper dup (system upgrade)...")
                 # Need to use pkexec for standard privilege escalation in GUI
                 cmd = ["pkexec", "zypper", "--non-interactive", "dup"]
                 proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
@@ -27,7 +36,7 @@ class UpdaterRunner(QThread):
                 for line in iter(proc.stdout.readline, ''):
                     if line:
                         full_log += line
-                        self.update_progress.emit(f"Zypper: {line.strip()}")
+                        self.update_progress.emit(f"Zypper Dup: {line.strip()}")
                         
                 proc.wait()
                 if proc.returncode != 0:

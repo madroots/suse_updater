@@ -26,6 +26,10 @@ class UpdateChecker(QThread):
             
             # 1. Zypper Check
             if self.check_zypper:
+                self.logger.info("Running zypper ref...")
+                # We assume the sudoers rule is installed to allow password-less execution
+                subprocess.run(["sudo", "-n", "zypper", "--non-interactive", "ref"], capture_output=True, text=True)
+
                 self.logger.info("Running zypper dry-run...")
                 # We assume the sudoers rule is installed to allow password-less execution
                 zypper_cmd = ["sudo", "-n", "zypper", "--non-interactive", "dup", "--dry-run"]
