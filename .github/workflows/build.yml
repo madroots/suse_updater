@@ -60,11 +60,11 @@ jobs:
         ln -sf io.github.madroots.suse-updater.svg AppDir/.DirIcon
         
         # Desktop Reference
-        cat > AppDir/usr/share/applications/io.github.madroots.suse-updater.desktop <<EOF
+        sed 's/^        //' > AppDir/usr/share/applications/io.github.madroots.suse-updater.desktop <<EOF
         [Desktop Entry]
         Type=Application
         Name=SUSE Updater
-        Exec=suse-updater
+        Exec=io.github.madroots.suse-updater
         Icon=io.github.madroots.suse-updater
         Categories=Qt;System;
         Comment=Safe and simple updates for OpenSUSE Tumbleweed
@@ -79,9 +79,15 @@ jobs:
         ln -sf usr/share/applications/io.github.madroots.suse-updater.desktop AppDir/io.github.madroots.suse-updater.desktop
         ln -sf io.github.madroots.suse-updater.desktop AppDir/suse-updater.desktop
         
+        # Binary name link in root for Gear Lever/AppImage standard
+        ln -sf AppRun AppDir/io.github.madroots.suse-updater
+        
+        # Create a binary link in usr/bin for good measure
+        ln -sf ../../AppRun AppDir/usr/bin/io.github.madroots.suse-updater
+        
         # AppRun script
         find AppDir -name AppRun -delete
-        cat > AppDir/AppRun <<'EOF'
+        sed 's/^        //' > AppDir/AppRun <<'EOF'
         #!/bin/bash
         HERE=$(dirname "$(readlink -f "$0")")
         export PYTHONHOME="$HERE/opt/python3.9"
