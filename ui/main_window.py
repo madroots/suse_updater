@@ -3,8 +3,9 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QLabel, QPushButton, QProgressBar, QSystemTrayIcon
 )
-from PySide6.QtCore import Qt, QSize, QSettings, QPropertyAnimation, Property, QRect
+from PySide6.QtCore import Qt, QSize, QSettings, QPropertyAnimation, Property, QRect, QRectF
 from PySide6.QtGui import QIcon, QFont, QColor, QPalette, QPixmap, QPainter
+from PySide6.QtSvg import QSvgRenderer
 from .advanced_window import AdvancedWindow
 from i18n import get_text
 
@@ -18,6 +19,8 @@ class RotatingLabel(QLabel):
         self.animation.setStartValue(0)
         self.animation.setEndValue(360)
         self.animation.setLoopCount(-1) # Infinite
+        self.renderer = None
+        self.mode = "standard" # "standard" (emoji) or "svg" (animated gear)
 
     @Property(int)
     def angle(self):
@@ -26,6 +29,20 @@ class RotatingLabel(QLabel):
     @angle.setter
     def angle(self, value):
         self._angle = value
+        self.update()
+
+    def set_svg(self, svg_path):
+        self.renderer = QSvgRenderer(svg_path)
+        self.mode = "svg"
+        self.setText("")
+        self.setPixmap(QPixmap())
+        self.update()
+
+    def set_emoji(self, emoji):
+        self.mode = "standard"
+        self.setText(emoji)
+        self.setPixmap(QPixmap())
+        self.stop_rotation()
         self.update()
 
     def start_rotation(self):
@@ -38,47 +55,16 @@ class RotatingLabel(QLabel):
         self.update()
 
     def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        
-        # 1. Handle Pixmap content
-        if not self.pixmap().isNull():
-            pm = self.pixmap()
+        if self.mode == "svg" and self.renderer:
+            painter = QPainter(self)
+            painter.setRenderHint(QPainter.Antialiasing)
             painter.translate(self.width() / 2, self.height() / 2)
             painter.rotate(self._angle)
-            painter.drawPixmap(-pm.width() / 2, -pm.height() / 2, pm)
-            return
-
-        # 2. Handle Text (Emoji) content with a temporary buffer for perfect centering
-        if self.text():
-            temp_pm = QPixmap(120, 120)
-            temp_pm.fill(Qt.transparent)
-            
-            p_temp = QPainter(temp_pm)
-            p_temp.setRenderHint(QPainter.Antialiasing)
-            p_temp.setRenderHint(QPainter.TextAntialiasing)
-            
-            font = self.font()
-            if "font-size" in self.styleSheet():
-                 # Handle "64px" -> 64
-                 import re
-                 match = re.search(r'(\d+)px', self.styleSheet())
-                 if match:
-                     font.setPixelSize(int(match.group(1)))
-                 else:
-                     font.setPointSize(48) # Fallback
-            
-            p_temp.setFont(font)
-            p_temp.setPen(self.palette().color(QPalette.WindowText))
-            
-            # Draw text perfectly centered in the 120x120 pixmap
-            p_temp.drawText(QRect(0, 0, 120, 120), Qt.AlignCenter, self.text())
-            p_temp.end()
-            
-            # Now draw the rotated buffer
-            painter.translate(self.width() / 2, self.height() / 2)
-            painter.rotate(self._angle)
-            painter.drawPixmap(-60, -60, temp_pm)
+            # Render gear centered
+            self.renderer.render(painter, QRectF(-45, -45, 90, 90))
+        else:
+            # Let QLabel handle emoji/standard text naturally
+            super().paintEvent(event)
 
 class MainWindow(QMainWindow):
     def __init__(self, check_icon, parent=None):
@@ -223,15 +209,9 @@ class MainWindow(QMainWindow):
         if hasattr(self, 'refresh_requested_callback'):
             self.refresh_requested_callback()
 
-    def _set_large_icon(self, qicon=None, emoji=""):
-        if qicon:
-            pixmap = qicon.pixmap(80, 80)
-            self.status_icon.setPixmap(pixmap)
-            self.status_icon.setText("")
-        else:
-            self.status_icon.setPixmap(QPixmap())
-            self.status_icon.setText(emoji)
-            self.status_icon.setStyleSheet("font-size: 64px;")
+    def _set_large_icon(self, emoji=""):
+        self.status_icon.set_emoji(emoji)
+        self.status_icon.setStyleSheet("font-size: 64px;")
 
     def refresh_texts(self):
         self.setWindowTitle(f"{get_text('title')} v0.1.6")
@@ -250,7 +230,8 @@ class MainWindow(QMainWindow):
         self.last_updates_data = updates_data
         
         if state == "checking":
-            self._set_large_icon(emoji="⚙️")
+            gear_svg = os.path.join(os.path.dirname(__file__), "..", "assets", "icons", "settings_gear.svg")
+            self.status_icon.set_svg(gear_svg)
             self.status_icon.start_rotation()
             self.status_label.setText(get_text("checking"))
             self.status_label.setStyleSheet("color: white;")
@@ -357,7 +338,8 @@ class MainWindow(QMainWindow):
             self.advanced_window.set_updating(False)
             
         elif state == "updating":
-            self._set_large_icon(emoji="⚙️")
+            gear_svg = os.path.join(os.path.dirname(__file__), "..", "assets", "icons", "settings_gear.svg")
+            self.status_icon.set_svg(gear_svg)
             self.status_icon.start_rotation()
             self.status_label.setText(get_text("updating_title"))
             self.status_label.setStyleSheet("color: white;")

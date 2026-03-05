@@ -211,7 +211,7 @@ class UpdateApp:
             self.main_window.advanced_window.append_log("\n--- ERRORS OCCURRED DURING UPDATE ---")
             self.main_window.set_status("checking") # Temp reset
             self.main_window.status_label.setText("Update Failed.")
-            self.main_window.status_icon.setText("❌")
+            self.main_window.status_icon.set_emoji("❌")
             self.main_window.details_label.setText("Check Advanced log.")
             self.main_window.progress_bar.hide()
         
