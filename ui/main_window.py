@@ -42,6 +42,7 @@ class RotatingLabel(QLabel):
         self.mode = "standard"
         self.setText(emoji)
         self.setPixmap(QPixmap())
+        self.setStyleSheet("") # Clear any SVG specific styles or old font sizes
         self.stop_rotation()
         self.update()
 
@@ -55,13 +56,14 @@ class RotatingLabel(QLabel):
         self.update()
 
     def paintEvent(self, event):
-        if self.mode == "svg" and self.renderer:
+        if self.mode == "svg" and self.renderer and self.renderer.isValid():
             painter = QPainter(self)
             painter.setRenderHint(QPainter.Antialiasing)
+            # Center the gear within the 120x120 widget
             painter.translate(self.width() / 2, self.height() / 2)
             painter.rotate(self._angle)
-            # Render gear centered
             self.renderer.render(painter, QRectF(-45, -45, 90, 90))
+            painter.end()
         else:
             # Let QLabel handle emoji/standard text naturally
             super().paintEvent(event)
@@ -107,7 +109,7 @@ class MainWindow(QMainWindow):
         # Main Status Icon (placeholder text/icon)
         self.status_icon = RotatingLabel()
         self.status_icon.setAlignment(Qt.AlignCenter)
-        self.content_layout.addWidget(self.status_icon)
+        self.content_layout.addWidget(self.status_icon, alignment=Qt.AlignCenter)
         
         # Main Status Text
         self.status_label = QLabel(get_text("checking"))
@@ -211,7 +213,9 @@ class MainWindow(QMainWindow):
 
     def _set_large_icon(self, emoji=""):
         self.status_icon.set_emoji(emoji)
-        self.status_icon.setStyleSheet("font-size: 64px;")
+        font = self.status_icon.font()
+        font.setPixelSize(64)
+        self.status_icon.setFont(font)
 
     def refresh_texts(self):
         self.setWindowTitle(f"{get_text('title')} v0.1.6")
