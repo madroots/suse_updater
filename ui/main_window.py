@@ -13,14 +13,14 @@ class RotatingLabel(QLabel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._angle = 0
-        self.setFixedSize(120, 120) # Increased fixed size to prevent clipping
+        self.setFixedSize(120, 120)
         self.animation = QPropertyAnimation(self, b"angle")
         self.animation.setDuration(2000)
         self.animation.setStartValue(0)
         self.animation.setEndValue(360)
-        self.animation.setLoopCount(-1) # Infinite
-        self.renderer = None
-        self.mode = "standard" # "standard" (emoji) or "svg" (animated gear)
+        self.animation.setLoopCount(-1)
+        self.buffer_pixmap = QPixmap(120, 120)
+        self.buffer_pixmap.fill(Qt.transparent)
 
     @Property(int)
     def angle(self):
@@ -32,17 +32,31 @@ class RotatingLabel(QLabel):
         self.update()
 
     def set_svg(self, svg_path):
-        self.renderer = QSvgRenderer(svg_path)
-        self.mode = "svg"
-        self.setText("")
-        self.setPixmap(QPixmap())
+        self.buffer_pixmap.fill(Qt.transparent)
+        renderer = QSvgRenderer(svg_path)
+        if renderer.isValid():
+            painter = QPainter(self.buffer_pixmap)
+            painter.setRenderHint(QPainter.Antialiasing)
+            # Render gear centered in the 120x120 buffer
+            renderer.render(painter, QRectF(15, 15, 90, 90))
+            painter.end()
         self.update()
 
     def set_emoji(self, emoji):
-        self.mode = "standard"
-        self.setText(emoji)
-        self.setPixmap(QPixmap())
-        self.setStyleSheet("") # Clear any SVG specific styles or old font sizes
+        self.buffer_pixmap.fill(Qt.transparent)
+        painter = QPainter(self.buffer_pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.TextAntialiasing)
+        
+        font = self.font()
+        font.setPixelSize(64)
+        painter.setFont(font)
+        painter.setPen(self.palette().color(QPalette.WindowText))
+        
+        # Draw text perfectly centered in the 120x120 buffer
+        painter.drawText(QRect(0, 0, 120, 120), Qt.AlignCenter, emoji)
+        painter.end()
+        
         self.stop_rotation()
         self.update()
 
@@ -56,17 +70,16 @@ class RotatingLabel(QLabel):
         self.update()
 
     def paintEvent(self, event):
-        if self.mode == "svg" and self.renderer and self.renderer.isValid():
-            painter = QPainter(self)
-            painter.setRenderHint(QPainter.Antialiasing)
-            # Center the gear within the 120x120 widget
-            painter.translate(self.width() / 2, self.height() / 2)
-            painter.rotate(self._angle)
-            self.renderer.render(painter, QRectF(-45, -45, 90, 90))
-            painter.end()
-        else:
-            # Let QLabel handle emoji/standard text naturally
-            super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        # Rotate around the center of the widget
+        painter.translate(self.width() / 2, self.height() / 2)
+        painter.rotate(self._angle)
+        
+        # Draw the pre-rendered buffer (already centered)
+        painter.drawPixmap(-60, -60, self.buffer_pixmap)
+        painter.end()
 
 class MainWindow(QMainWindow):
     def __init__(self, check_icon, parent=None):
@@ -213,9 +226,6 @@ class MainWindow(QMainWindow):
 
     def _set_large_icon(self, emoji=""):
         self.status_icon.set_emoji(emoji)
-        font = self.status_icon.font()
-        font.setPixelSize(64)
-        self.status_icon.setFont(font)
 
     def refresh_texts(self):
         self.setWindowTitle(f"{get_text('title')} v0.1.6")
