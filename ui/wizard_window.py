@@ -126,14 +126,14 @@ class WizardWindow(QWidget):
             cmd = f'echo "{sudoers_content}" > /etc/sudoers.d/suse-updater && chmod 440 /etc/sudoers.d/suse-updater'
             subprocess.run(["pkexec", "bash", "-c", cmd], check=True)
             
-            # Test if the rule actually works!
+            # Test if the rule is correctly recognized by sudo policy!
             self.install_btn.setText("Testing Rule...")
             QApplication.processEvents()
             
-            # If the rule works, these commands should succeed WITHOUT asking for a password.
-            # We test both ref and dry-run
-            ref_cmd = ["sudo", "-n", "zypper", "--non-interactive", "ref"]
-            test_cmd = ["sudo", "-n", "zypper", "--non-interactive", "dup", "--dry-run"]
+            # Use sudo -n -l to check if the rule is active in the current session's policy.
+            # This is fast and doesn't require network.
+            ref_cmd = ["sudo", "-n", "-l", "/usr/bin/zypper", "--non-interactive", "ref"]
+            test_cmd = ["sudo", "-n", "-l", "/usr/bin/zypper", "--non-interactive", "dup", "--dry-run"]
             
             ref_proc = subprocess.run(ref_cmd, capture_output=True, text=True)
             test_proc = subprocess.run(test_cmd, capture_output=True, text=True)

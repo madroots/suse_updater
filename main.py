@@ -70,12 +70,13 @@ class UpdateApp:
         self.settings_window.settings_changed.connect(self.on_settings_saved)
 
         
-        # Check rule installation on startup by testing both ref and dup
+        # Check rule installation on startup by testing policy presence with sudo -n -l
         import subprocess
         try:
-            # We test both because existing users might have the old rule (only dup)
-            ref_cmd = ["sudo", "-n", "zypper", "--non-interactive", "ref"]
-            dup_cmd = ["sudo", "-n", "zypper", "--non-interactive", "dup", "--dry-run"]
+            # We use 'sudo -n -l <cmd>' to check if the rule exists in sudoers without executing it.
+            # This is fast and network-independent, preventing the wizard from showing if network is down.
+            ref_cmd = ["sudo", "-n", "-l", "/usr/bin/zypper", "--non-interactive", "ref"]
+            dup_cmd = ["sudo", "-n", "-l", "/usr/bin/zypper", "--non-interactive", "dup", "--dry-run"]
             
             ref_proc = subprocess.run(ref_cmd, capture_output=True, text=True)
             dup_proc = subprocess.run(dup_cmd, capture_output=True, text=True)
