@@ -45,6 +45,10 @@ class SettingsWindow(QWidget):
         self.autostart_cb.setChecked(self.is_autostart_enabled())
         self.sys_layout.addWidget(self.autostart_cb)
         
+        self.passwordless_cb = QCheckBox(get_text("passwordless_updates"))
+        self.passwordless_cb.setChecked(self.settings.value("passwordless_updates", False, type=bool))
+        self.sys_layout.addWidget(self.passwordless_cb)
+        
         # Language Picker
         self.lang_layout = QHBoxLayout()
         self.lang_label = QLabel(f"{get_text('language')}:")
@@ -132,6 +136,8 @@ class SettingsWindow(QWidget):
             import subprocess
             subprocess.run(["pkexec", "rm", "-f", "/etc/sudoers.d/suse-updater"])
             self.zypper_cb.setChecked(False) # Turn off the check so the script doesn't loop fail
+            self.passwordless_cb.setChecked(False)
+            self.settings.setValue("passwordless_updates", False)
             self.save()
 
     def get_autostart_path(self):
@@ -186,9 +192,44 @@ X-GNOME-Autostart-enabled=true
         self.settings.setValue("check_flatpak", self.flatpak_cb.isChecked())
         self.toggle_autostart(self.autostart_cb.isChecked())
         
+        old_passwordless = self.settings.value("passwordless_updates", False, type=bool)
+        new_passwordless = self.passwordless_cb.isChecked()
+        
+        if old_passwordless != new_passwordless:
+            if new_passwordless:
+                reply = QMessageBox.question(
+                    self, get_text("passwordless_confirm_title"),
+                    get_text("passwordless_confirm_msg"),
+                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+                )
+                if reply == QMessageBox.Yes:
+                    self._update_sudoers(True)
+                    self.settings.setValue("passwordless_updates", True)
+                else:
+                    self.passwordless_cb.setChecked(False)
+            else:
+                self._update_sudoers(False)
+                self.settings.setValue("passwordless_updates", False)
+        
         self.refresh_texts()
         self.settings_changed.emit()
         self.close()
+
+    def _update_sudoers(self, passwordless):
+        import subprocess
+        base_rule = "ALL ALL=(root) NOPASSWD: /usr/bin/zypper --non-interactive dup --dry-run, /usr/bin/zypper --non-interactive ref"
+        if passwordless:
+            full_rule = base_rule + ", /usr/bin/zypper --non-interactive dup, /usr/bin/flatpak update -y --system*"
+        else:
+            full_rule = base_rule
+            
+        cmd = f'echo "{full_rule}" > /etc/sudoers.d/suse-updater && chmod 440 /etc/sudoers.d/suse-updater'
+        try:
+            subprocess.run(["pkexec", "bash", "-c", cmd], check=True)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to update sudoers: {e}")
+            self.passwordless_cb.setChecked(False)
+            self.settings.setValue("passwordless_updates", False)
 
     def refresh_texts(self):
         self.setWindowTitle(get_text("settings_title"))
@@ -197,6 +238,7 @@ X-GNOME-Autostart-enabled=true
         self.flatpak_cb.setText(get_text("check_flatpak_label"))
         self.sys_group.setTitle(get_text("sys_behavior"))
         self.autostart_cb.setText(get_text("autostart"))
+        self.passwordless_cb.setText(get_text("passwordless_updates"))
         self.lang_label.setText(f"{get_text('language')}:")
         self.adv_group.setTitle(get_text("adv_utilities"))
         self.logs_btn.setText(get_text("open_logs"))

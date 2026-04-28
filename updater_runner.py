@@ -18,54 +18,88 @@ class UpdaterRunner(QThread):
         success = True
         
         try:
-            if self.run_zypper:
-                self.update_progress.emit("Refreshing repositories (zypper ref)...")
-                ref_cmd = ["pkexec", "zypper", "--non-interactive", "ref"]
-                ref_proc = subprocess.Popen(ref_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-                for line in iter(ref_proc.stdout.readline, ''):
-                    if line:
-                        full_log += line
-                        self.update_progress.emit(f"Zypper Ref: {line.strip()}")
-                ref_proc.wait()
+            from PySide6.QtCore import QSettings
+            settings = QSettings("SuseUpdater", "OpenSUSE_Tool")
+            passwordless = settings.value("passwordless_updates", False, type=bool)
+
+            if not passwordless:
+                # We build a single script to execute all root commands so it prompts for password only once
+                script = "set -e\n"
+                if self.run_zypper:
+                    script += "echo '___REF___'\n"
+                    script += "zypper --non-interactive ref\n"
+                    script += "echo '___DUP___'\n"
+                    script += "zypper --non-interactive dup\n"
+                if self.flatpak_system_apps:
+                    apps = " ".join(self.flatpak_system_apps)
+                    script += "echo '___FLATPAK___'\n"
+                    script += f"flatpak update -y --system {apps}\n"
+                    
+                if self.run_zypper or self.flatpak_system_apps:
+                    self.update_progress.emit("Requesting privileges and starting system updates...")
+                    cmd = ["pkexec", "sh", "-c", script]
+                    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                    for line in iter(proc.stdout.readline, ''):
+                        if line:
+                            clean_line = line.strip()
+                            if clean_line == "___REF___":
+                                self.update_progress.emit("Refreshing repositories (zypper ref)...")
+                            elif clean_line == "___DUP___":
+                                self.update_progress.emit("Running zypper dup (system upgrade)...")
+                            elif clean_line == "___FLATPAK___":
+                                self.update_progress.emit(f"Updating {len(self.flatpak_system_apps)} system flatpaks...")
+                            else:
+                                full_log += line
+                                self.update_progress.emit(f"System: {clean_line}")
+                    proc.wait()
+                    if proc.returncode != 0:
+                        success = False
+                        full_log += f"\nSystem update failed with return code {proc.returncode}\n"
+            else:
+                # Passwordless: we use sudo -n for each command separately
+                if self.run_zypper:
+                    self.update_progress.emit("Refreshing repositories (zypper ref)...")
+                    ref_cmd = ["sudo", "-n", "zypper", "--non-interactive", "ref"]
+                    ref_proc = subprocess.Popen(ref_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                    for line in iter(ref_proc.stdout.readline, ''):
+                        if line:
+                            full_log += line
+                            self.update_progress.emit(f"Zypper Ref: {line.strip()}")
+                    ref_proc.wait()
+                    if ref_proc.returncode != 0: success = False
+                    
+                    self.update_progress.emit("Running zypper dup (system upgrade)...")
+                    dup_cmd = ["sudo", "-n", "zypper", "--non-interactive", "dup"]
+                    dup_proc = subprocess.Popen(dup_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                    for line in iter(dup_proc.stdout.readline, ''):
+                        if line:
+                            full_log += line
+                            self.update_progress.emit(f"Zypper Dup: {line.strip()}")
+                    dup_proc.wait()
+                    if dup_proc.returncode != 0: success = False
                 
-                self.update_progress.emit("Running zypper dup (system upgrade)...")
-                # Need to use pkexec for standard privilege escalation in GUI
-                cmd = ["pkexec", "zypper", "--non-interactive", "dup"]
-                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-                
-                for line in iter(proc.stdout.readline, ''):
-                    if line:
-                        full_log += line
-                        self.update_progress.emit(f"Zypper Dup: {line.strip()}")
-                        
-                proc.wait()
-                if proc.returncode != 0:
-                    success = False
-                    full_log += f"\nZypper failed with return code {proc.returncode}\n"
-            
-            if self.flatpak_system_apps:
-                self.update_progress.emit(f"Updating {len(self.flatpak_system_apps)} system flatpaks...")
-                cmd = ["pkexec", "flatpak", "update", "-y", "--system"] + self.flatpak_system_apps
-                # System flatpak requires polkit authentication correctly bypassed by flatpak normally, but via subprocess stdout piping, it often fails (Error: Deploy not allowed for user). So we use pkexec.
-                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-                for line in iter(proc.stdout.readline, ''):
-                    if line:
-                        full_log += line
-                        self.update_progress.emit(f"Flatpak (System): {line.strip()}")
-                proc.wait()
-                if proc.returncode != 0:
-                    success = False
-            
+                if self.flatpak_system_apps:
+                    self.update_progress.emit(f"Updating {len(self.flatpak_system_apps)} system flatpaks...")
+                    fp_cmd = ["sudo", "-n", "flatpak", "update", "-y", "--system"] + self.flatpak_system_apps
+                    fp_proc = subprocess.Popen(fp_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                    for line in iter(fp_proc.stdout.readline, ''):
+                        if line:
+                            full_log += line
+                            self.update_progress.emit(f"Flatpak (System): {line.strip()}")
+                    fp_proc.wait()
+                    if fp_proc.returncode != 0: success = False
+
+            # User flatpaks always run separately without root
             if self.flatpak_user_apps:
                 self.update_progress.emit(f"Updating {len(self.flatpak_user_apps)} user flatpaks...")
-                cmd = ["flatpak", "update", "-y", "--user"] + self.flatpak_user_apps
-                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-                for line in iter(proc.stdout.readline, ''):
+                usr_cmd = ["flatpak", "update", "-y", "--user"] + self.flatpak_user_apps
+                usr_proc = subprocess.Popen(usr_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                for line in iter(usr_proc.stdout.readline, ''):
                     if line:
                         full_log += line
                         self.update_progress.emit(f"Flatpak (User): {line.strip()}")
-                proc.wait()
-                if proc.returncode != 0:
+                usr_proc.wait()
+                if usr_proc.returncode != 0:
                     success = False
 
         except Exception as e:
