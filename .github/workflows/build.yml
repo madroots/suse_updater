@@ -9,6 +9,8 @@ jobs:
   build-linux:
     name: Build Linux AppImage
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
     - uses: actions/checkout@v4
 
@@ -63,7 +65,7 @@ jobs:
         StartupWMClass=io.github.madroots.suse-updater\n\
         X-AppImage-Name=SUSE Updater\n\
         X-AppImage-Identifier=io.github.madroots.suse-updater\n\
-        X-AppImage-Version=0.1.6\n" | sed 's/^ *//' > AppDir/io.github.madroots.suse-updater.desktop
+        X-AppImage-Version=0.1.7\n" | sed 's/^ *//' > AppDir/io.github.madroots.suse-updater.desktop
         
         # internal directory structure for AppStream/system compatibility
         ln -sf ../../../io.github.madroots.suse-updater.desktop AppDir/usr/share/applications/io.github.madroots.suse-updater.desktop
